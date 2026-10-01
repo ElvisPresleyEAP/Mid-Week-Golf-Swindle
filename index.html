@@ -164,7 +164,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
 <main>
   <section class="card">
     <div class="section-head">
-      <div><h2>Podium Finish</h2><p class="sub">Prizes are automatically calculated from the number of players entered.</p></div>
+      <div><h2>Podium Finish</h2><p class="sub">Prizes are automatically calculated from the number of players with a score entered.</p></div>
       <div class="count-badge">Players: <strong id="playerCount">0</strong> · Prize Pot: <strong id="prizePot">£0</strong></div>
     </div>
     <div class="podium">
@@ -212,7 +212,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
       <button class="secondary" id="addPlayerBtn">+ Add Player</button>
       <span class="player-limit" id="playerLimit">13 of 50 player rows</span>
     </div>
-    <p class="hint">The prize calculation uses the number of player names entered, not the number of rows displayed. HCP Deduction can be manually adjusted.</p>
+    <p class="hint">The prize calculation uses the number of player names with a valid score entered (Score Today > 0), not the number of rows displayed. HCP Deduction can be manually adjusted.</p>
   </section>
 
   <section class="card">
@@ -481,23 +481,29 @@ function namedPlayers(){
 
 function updatePrizes(){
   const allNamed=namedPlayers();
-  const count=allNamed.length; 
-  const payouts=payoutMatrix[count]||[0,0,0,0,0];
-  
-  $('playerCount').textContent=count;
-  $('prizePot').textContent=`£${payouts.reduce((a,b)=>a+b,0)}`;
+  // Count only players who have a name AND a valid score > 0
+  const scoredPlayers = allNamed.filter(p => p.name && p.score !== null && p.score > 0);
+  const count = scoredPlayers.length;
 
-  const winningList=allNamed
-    .filter(p=>p.score!==null && p.score>0)
-    .sort((a,b)=>b.score-a.score);
+  // Use the count of scored players to look up the payout matrix
+  const payouts = payoutMatrix[count] || [0,0,0,0,0];
 
-  const names=['first','second','third'];
-  names.forEach((n,i)=>{
-    $(`${n}Name`).value=winningList[i]?.name||'';
-    $(`${n}Pts`).value=winningList[i]?.score!==undefined?winningList[i].score:'';
-    $(`${n}Prize`).value=winningList[i]&&payouts[i]?`£${payouts[i]}`:'';
+  $('playerCount').textContent = count;
+  $('prizePot').textContent = `£${payouts.reduce((a,b)=>a+b,0)}`;
+
+  const winningList = scoredPlayers
+    .slice()
+    .sort((a,b) => b.score - a.score);
+
+  const names = ['first','second','third'];
+  names.forEach((n,i) => {
+    const winner = winningList[i];
+    $(`${n}Name`).value = winner ? winner.name : '';
+    $(`${n}Pts`).value  = winner ? winner.score : '';
+    $(`${n}Prize`).value = (winner && payouts[i]) ? `£${payouts[i]}` : '';
   });
-  $('playerLimit').textContent=`${playerCountRows} of 50 player rows`;
+
+  $('playerLimit').textContent = `${playerCountRows} of 50 player rows`;
 }
 
 $('addPlayerBtn').addEventListener('click',()=>{
