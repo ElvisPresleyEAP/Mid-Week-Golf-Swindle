@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mid-Week Swindle</title>
+<style>
+:root{--green:#5b4320;--green2:#8a6424;--gold:#d4af37;--gold2:#f0d77a;--cream:#fff8e7;--ink:#2b261d;--muted:#746b5b;--line:#e3d7bd;--paper:#fffdf8;--bg:#f7f1e3}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 Arial,Helvetica,sans-serif}
+.wrap{max-width:1050px;margin:16px auto;padding:0 12px}
+header{background:linear-gradient(130deg,#fff8e7,#f3df9b);color:#4b391d;border:1px solid #d4af37;border-radius:14px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:15px;box-shadow:0 4px 16px #123b2815}
+.header-left{display:flex;align-items:flex-start;gap:12px}
+.info-icon-btn{background:var(--green);color:var(--gold2);border:none;width:28px;height:28px;border-radius:50%;font-weight:bold;font-size:14px;cursor:pointer;display:grid;place-items:center;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,0.15);transition:transform 0.2s}
+.info-icon-btn:hover{transform:scale(1.08);filter:brightness(1.1)}
+.kicker{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#8a6424;font-weight:bold}
+h1{margin:3px 0 0;font-size:clamp(22px,3vw,30px)}
+header p{margin:4px 0 0;color:#66563a;font-size:13px}
+.header-right{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.datebox{min-width:160px}
+.datebox label{color:#6f531d}
+.header-actions{display:flex;gap:6px}
+.header-actions button{border:0;border-radius:7px;padding:8px 10px;font:600 12px Arial;cursor:pointer;white-space:nowrap}
+.header-actions .backup-btn{background:var(--green2);color:#fff}
+.header-actions .restore-btn{background:#e8eee9;color:#24412d}
+.header-actions button:hover{filter:brightness(.96)}
+
+/* Modal styling for Rules */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;place-items:center;padding:15px}
+.modal-overlay.active{display:grid}
+.modal{background:var(--paper);border:1px solid var(--gold);border-radius:14px;max-width:520px;width:100%;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,0.2);animation:fadeIn 0.2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.modal-header h3{margin:0;color:var(--green);font-size:18px}
+.close-modal{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:0}
+.close-modal:hover{color:var(--ink)}
+.modal-body{max-height:60vh;overflow-y:auto;padding-right:4px}
+.modal-body ol{margin:0;padding-left:18px}
+.modal-body li{margin-bottom:6px;color:var(--ink);font-size:13px;line-height:1.35}
+
+main{display:grid;gap:14px;margin-top:14px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 3px 10px #153a200a}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+h2{font-size:18px;margin:0;color:var(--green)}
+.sub{font-size:12px;color:var(--muted);margin:2px 0 0}
+.podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end}.place-1{margin-bottom:24px}.place-2{margin-bottom:12px}.place-3{margin-bottom:0}
+.place{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.place-head{padding:8px 12px;background:#fff8e7;display:flex;align-items:center;gap:8px;font-weight:bold;color:var(--green);font-size:13px}
+.medal{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#d4af37;color:#fff;font-size:12px}
+.place-2 .medal{background:#d7d0bd;color:#4b4437}
+.place-3 .medal{background:#c99555;color:#fff}
+.fields{padding:10px;display:grid;gap:8px}
+label{display:block;font-size:11px;font-weight:bold;color:#536257;margin-bottom:3px}
+input,textarea,select{font:inherit;color:var(--ink);width:100%;border:1px solid #cbd7ce;border-radius:6px;background:#fff;padding:6px 8px;outline:none;font-size:13px}
+input:focus,textarea:focus,select:focus{border-color:#23834a;box-shadow:0 0 0 2px #23834a1a}
+input[type=number]{font-variant-numeric:tabular-nums}
+
+/* Highlight style for Score Today of 31 or below */
+.low-score {
+  color: #dc2626 !important;
+  font-weight: 700 !important;
+}
+
+.player-grid{display:grid;grid-template-columns:1.4fr repeat(4,minmax(100px,1fr));gap:8px}
+.player-row{display:contents}
+.hint{font-size:11px;color:var(--muted);margin-top:8px}
+.result{background:#f0fdf4;border-color:#bbebc7}
+.result input{background:#f7fff8;font-weight:bold;color:#14532d}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+button.primary, button.secondary, button.danger{border:0;border-radius:7px;padding:8px 12px;font:600 13px Arial;cursor:pointer}
+.primary{background:var(--green2);color:#fff}.secondary{background:#e8eee9;color:#24412d}.danger{background:#fff0ed;color:#a33221}
+button:hover{filter:brightness(.96)}
+footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
+.player-table-wrap{overflow-x:auto}
+.player-head{padding:0 0 4px}
+.player-head label { cursor: pointer; user-select: none; display: flex; align-items: flex-start; justify-content: space-between; font-size: 11px; line-height: 1.25; }
+.player-head label:hover { color: var(--green2); }
+.sort-icon { font-size: 10px; margin-left: 3px; color: var(--muted); flex-shrink: 0; margin-top: 1px; }
+.player-row{display:grid;grid-template-columns:1.4fr repeat(4,minmax(100px,1fr));gap:8px;padding:4px 0;border-top:1px solid var(--line)}
+.player-row input{min-width:0;padding:5px 7px;font-size:13px}
+.player-row .next{background:#fff8e7;font-weight:bold;color:#6f531d}.count-badge{background:#fff8e7;border:1px solid #dfc77b;border-radius:999px;padding:4px 10px;color:#6f531d;font-size:12px;white-space:nowrap}.player-actions{align-items:center}.player-limit{font-size:12px;color:var(--muted)}
+@media(max-width:800px){.podium{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}.place-1,.place-2,.place-3{margin-bottom:0}.player-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.player-grid .wide{grid-column:1/-1}.header-right{flex-direction:column;align-items:flex-start}}
+@media(max-width:600px){.podium{grid-template-columns:1fr}.place-1,.place-2,.place-3{margin-bottom:0}.count-badge{font-size:11px}.wrap{margin:8px auto;padding:0 8px}header{padding:14px;display:block}.datebox{margin-top:10px}.podium{grid-template-columns:1fr}.card{padding:12px}.player-grid{grid-template-columns:1fr 1fr}}
+@media print{body{background:#fff}.wrap{max-width:none;margin:0;padding:0}header{border-radius:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}.card{box-shadow:none;break-inside:avoid;margin-top:8px;padding:10px}.actions{display:none}input,textarea{border:0;border-bottom:1px solid #bbb;border-radius:0;padding:3px 2px}footer{padding:6px}.wrap{padding:0 6px}.header-actions{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="header-left">
+    <button class="info-icon-btn" id="rulesBtn" title="View Rules">i</button>
+    <div>
+      <div class="kicker">Golf results &amp; handicaps</div>
+      <h1>Mid-Week Swindle</h1>
+      <p>Podium finish, points, prizes and next-playing handicap</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="datebox">
+      <label for="eventDate">Event date</label>
+      <input type="date" id="eventDate">
+    </div>
+    <div class="header-actions">
+      <button class="backup-btn" id="backupBtn" title="Download a full backup of all data">Backup</button>
+      <button class="restore-btn" id="restoreBtn" title="Restore data from a backup file">Restore</button>
+      <input type="file" id="restoreFileInput" accept=".json" style="display:none">
+    </div>
+  </div>
+</header>
+
+<!-- Rules Modal -->
+<div class="modal-overlay" id="rulesModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Swindle Rules</h3>
+      <button class="close-modal" id="closeRulesBtn">&times;</button>
+    </div>
+    <div class="modal-body">
+      <ol>
+        <li>Highest score today: HCP deducted by 1.0 shot</li>
+        <li>2nd highest score today: HCP deducted by 0.5 shot</li>
+        <li>Other players do not lose shots unless another rule applies</li>
+        <li>Exceptional Score 40 and over - loses an additional 2 shots</li>
+        <li>31 and lower scores gain 0.5 shot on HCP, unless the player is the highest or 2nd highest score</li>
+        <li>Maximum PHC is 18</li>
+        <li>Payouts are based on PGA Matrix</li>
+        <li>£5 to be paid before start of round or Cash dependant on group choice</li>
+        <li>Scorecard to be completed on course and no adjustments in clubhouse accepted, unless damaged by weather</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section class="card">
+    <div class="section-head">
+      <div><h2>Podium Finish</h2><p class="sub">Prizes are automatically calculated from the number of players entered.</p></div>
+      <div class="count-badge">Players: <strong id="playerCount">0</strong> · Prize Pot: <strong id="prizePot">£0</strong></div>
+    </div>
+    <div class="podium">
+      <div class="place place-1">
+        <div class="place-head"><span class="medal">1</span> 1st Place</div>
+        <div class="fields">
+          <div><label for="firstName">Player name</label><input id="firstName" readonly placeholder="Automatically assigned"></div>
+          <div><label for="firstPts">Points</label><input id="firstPts" type="number" min="0" step="1" placeholder="0"></div>
+          <div><label for="firstPrize">Prize</label><input id="firstPrize" readonly placeholder="£0"></div>
+        </div>
+      </div>
+      <div class="place place-2">
+        <div class="place-head"><span class="medal">2</span> 2nd Place</div>
+        <div class="fields">
+          <div><label for="secondName">Player name</label><input id="secondName" readonly placeholder="Automatically assigned"></div>
+          <div><label for="secondPts">Points</label><input id="secondPts" type="number" min="0" step="1" placeholder="0"></div>
+          <div><label for="secondPrize">Prize</label><input id="secondPrize" readonly placeholder="£0"></div>
+        </div>
+      </div>
+      <div class="place place-3">
+        <div class="place-head"><span class="medal">3</span> 3rd Place</div>
+        <div class="fields">
+          <div><label for="thirdName">Player name</label><input id="thirdName" readonly placeholder="Automatically assigned"></div>
+          <div><label for="thirdPts">Points</label><input id="thirdPts" type="number" min="0" step="1" placeholder="0"></div>
+          <div><label for="thirdPrize">Prize</label><input id="thirdPrize" readonly placeholder="£0"></div>
+        </div>
+      </div>
+    </div>
+    <p class="hint">Score Today of 31 or below is shown in bold red. Highest score gets a 1.0-shot HCP deduction, 2nd highest gets a 0.5-shot deduction. Other scores of 31 or below gain 0.5 shot. The resulting HCP is shown in “HCP Next Time You Play”.</p>
+  </section>
+
+  <section class="card">
+    <div class="section-head"><div><h2>Player Handicap Record</h2><p class="sub">13 blank player rows provided by default (up to 50). Click column headings to sort. Pressing Enter moves down fields. HCP Deduction is editable.</p></div></div>
+    <div class="player-table-wrap">
+      <div class="player-grid player-head">
+        <div><label id="sortName">Players<br>Name <span class="sort-icon" id="iconName">↕</span></label></div>
+        <div><label id="sortStart">Starting<br>HCP <span class="sort-icon" id="iconStart">↕</span></label></div>
+        <div><label id="sortScore">Score<br>Today <span class="sort-icon" id="iconScore">↕</span></label></div>
+        <div><label id="sortDeduct">HCP<br>Deduction <span class="sort-icon" id="iconDeduct">↕</span></label></div>
+        <div><label id="sortNext">HCP Next<br>Time You Play <span class="sort-icon" id="iconNext">↕</span></label></div>
+      </div>
+      <div id="players"></div>
+    </div>
+    <div class="actions player-actions">
+      <button class="secondary" id="addPlayerBtn">+ Add Player</button>
+      <span class="player-limit" id="playerLimit">13 of 50 player rows</span>
+    </div>
+    <p class="hint">The prize calculation uses the number of player names entered, not the number of rows displayed. HCP Deduction can be manually adjusted.</p>
+  </section>
+
+  <section class="card">
+    <div class="section-head"><div><h2>Notes</h2><p class="sub">Optional event notes, payouts or announcements.</p></div></div>
+    <textarea id="notes" rows="2" placeholder="Add notes for this event..."></textarea>
+    <div class="actions">
+      <button class="primary" id="saveBtn">Save in this browser</button>
+      <button class="secondary" id="printBtn">Print / Save as PDF</button>
+      <button class="secondary" id="exportBtn">Export results (.json)</button>
+      <button class="danger" id="clearBtn">Clear form</button>
+    </div>
+    <p class="hint" id="status" role="status">Your entries stay in this browser when you choose Save.</p>
+  </section>
+</main>
+<footer>Mid-Week Swindle · Results sheet</footer>
+</div>
+<script>
+const podiumIds=['eventDate','firstName','firstPts','firstPrize','secondName','secondPts','secondPrize','thirdName','thirdPts','thirdPrize','notes'];
+const $=id=>document.getElementById(id);
+
+// Rules modal toggle logic
+const rulesBtn = $('rulesBtn');
+const rulesModal = $('rulesModal');
+const closeRulesBtn = $('closeRulesBtn');
+
+rulesBtn.addEventListener('click', () => rulesModal.classList.add('active'));
+closeRulesBtn.addEventListener('click', () => rulesModal.classList.remove('active'));
+rulesModal.addEventListener('click', (e) => {
+  if (e.target === rulesModal) rulesModal.classList.remove('active');
+});
+
+const payoutMatrix={
+2:[6,4,0,0,0],3:[9,6,0,0,0],4:[12,8,0,0,0],5:[15,10,0,0,0],
+6:[18,12,0,0,0],7:[21,14,0,0,0],8:[24,16,0,0,0],9:[27,18,0,0,0],
+10:[25,15,10,0,0],11:[28,17,10,0,0],12:[30,18,12,0,0],13:[33,20,12,0,0],
+14:[35,21,14,0,0],15:[38,23,14,0,0],16:[40,24,16,0,0],17:[43,26,16,0,0],
+18:[45,27,18,0,0],19:[43,26,16,10,0],20:[45,27,17,11,0],
+21:[47,28,18,12,0],22:[50,30,19,11,0],23:[52,31,20,12,0],24:[54,32,20,14,0],
+25:[56,34,21,14,0],26:[59,35,22,14,0],27:[61,36,23,15,0],28:[59,35,22,15,9],
+29:[61,36,22,15,11],30:[63,38,23,16,10],31:[65,39,24,16,11],32:[67,40,25,17,11],
+33:[69,41,26,17,12],34:[71,43,26,18,12],35:[74,44,27,18,12],36:[76,45,28,19,12],
+37:[78,46,29,19,13],38:[80,48,29,20,13],39:[82,49,30,20,14],40:[84,50,31,21,14],
+41:[85,51,32,22,15],42:[86,52,33,23,16],43:[87,53,34,24,17],44:[88,54,35,25,18],
+45:[89,55,36,26,19],46:[90,56,37,27,20],47:[91,57,38,28,21],48:[92,58,39,29,22],
+49:[93,59,40,30,23],50:[94,60,41,31,24]
+};
+
+let playerCountRows=13;
+let currentSortColumn = null;
+let currentSortDirection = 'asc';
+
+function renderTableRows(dataArray = null) {
+  const container = $('players');
+  container.innerHTML = '';
+
+  for (let i = 1; i <= playerCountRows; i++) {
+    const rowData = dataArray ? dataArray[i - 1] : {
+      name: $(`p${i}name`)?.value || '',
+      start: $(`p${i}start`)?.value || '',
+      score: $(`p${i}score`)?.value || '',
+      deduct: $(`p${i}deduct`)?.value || '',
+      next: $(`p${i}next`)?.value || ''
+    };
+
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.dataset.index = i;
+    row.innerHTML = `<div><input id="p${i}name" data-field="name" data-row="${i}" placeholder="Player ${i}" value="${escapeHtml(rowData.name)}"></div>
+      <div><input id="p${i}start" data-field="start" data-row="${i}" type="number" step="0.1" placeholder="0.0" value="${escapeHtml(rowData.start)}"></div>
+      <div><input id="p${i}score" data-field="score" data-row="${i}" type="number" min="0" step="1" placeholder="0" value="${escapeHtml(rowData.score)}"></div>
+      <div><input id="p${i}deduct" data-field="deduct" data-row="${i}" type="text" placeholder="0.0" value="${escapeHtml(rowData.deduct)}"></div>
+      <div><input id="p${i}next" class="next" readonly placeholder="Calculated" value="${escapeHtml(rowData.next)}"></div>`;
+    container.appendChild(row);
+
+    // Make deduct field editable and attach listeners
+    const inputs = [$(`p${i}name`), $(`p${i}start`), $(`p${i}score`), $(`p${i}deduct`)];
+    inputs.forEach(el => {
+      el.addEventListener('input', () => {
+        updateAllCalculations();
+        autoSave();
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          navigateNextField(i, el.dataset.field);
+        }
+      });
+    });
+  }
+  updateAllCalculations();
+}
+
+function navigateNextField(currentRow, currentField) {
+  const fieldsOrder = ['name', 'start', 'score', 'deduct'];
+  const fieldIndex = fieldsOrder.indexOf(currentField);
+  
+  let targetRow = currentRow;
+  let targetFieldIdx = fieldIndex + 1;
+
+  if (targetFieldIdx >= fieldsOrder.length) {
+    targetFieldIdx = 0;
+    targetRow = currentRow + 1;
+  }
+
+  if (targetRow <= playerCountRows) {
+    const nextInput = $(`p${targetRow}${fieldsOrder[targetFieldIdx]}`);
+    if (nextInput) {
+      nextInput.focus();
+      nextInput.select();
+    }
+  }
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/"/g, '&quot;');
+}
+
+function updateAllCalculations() {
+  const namedList = [];
+  for(let i=1; i<=playerCountRows; i++){
+    const name = $(`p${i}name`)?.value.trim();
+    const scoreVal = $(`p${i}score`)?.value;
+    const score = (scoreVal !== '' && !isNaN(scoreVal)) ? parseInt(scoreVal, 10) : null;
+    namedList.push({i, name, score});
+  }
+
+  const validScores = namedList.filter(p => p.name && p.score !== null && p.score > 0).map(p => p.score);
+  const uniqueSortedScores = [...new Set(validScores)].sort((a, b) => b - a);
+  const topScore = uniqueSortedScores[0] !== undefined ? uniqueSortedScores[0] : -Infinity;
+  const secondScore = uniqueSortedScores[1] !== undefined ? uniqueSortedScores[1] : -Infinity;
+
+  for(let i=1; i<=playerCountRows; i++){
+    const p = namedList[i-1];
+    const startInput = $(`p${i}start`);
+    const scoreInput = $(`p${i}score`);
+    const deductInput = $(`p${i}deduct`);
+    const nextInput = $(`p${i}next`);
+
+    const start = parseFloat(startInput?.value);
+    const score = p.score;
+
+    if (scoreInput) {
+      if (score !== null && score <= 31) {
+        scoreInput.classList.add('low-score');
+      } else {
+        scoreInput.classList.remove('low-score');
+      }
+    }
+
+    // Determine auto deduction only if deduct field is empty or we haven't manually set it
+    if (!deductInput.dataset.manual) {
+      let autoDeductStr = '0';
+      if (p.name && score !== null && score > 0) {
+        if (score === topScore && topScore > 0) {
+          autoDeductStr = '-1.0';
+        } else if (score === secondScore && secondScore > 0) {
+          autoDeductStr = '-0.5';
+        } else if (score <= 31) {
+          autoDeductStr = '+0.5';
+        }
+      }
+      deductInput.value = autoDeductStr;
+    }
+
+    // Now compute next using whatever is in deductInput (manual or auto)
+    if (Number.isFinite(start)) {
+      const rawDeductStr = deductInput.value.trim() || '0';
+      const numericAdjustment = parseFloat(rawDeductStr) || 0;
+
+      let calculatedNext;
+      if (start < 0) {
+        calculatedNext = start - numericAdjustment;
+      } else {
+        calculatedNext = start + numericAdjustment;
+      }
+
+      if (calculatedNext > 18) calculatedNext = 18;
+      if (nextInput) {
+        nextInput.value = calculatedNext.toFixed(1);
+      }
+    } else if (nextInput) {
+      nextInput.value = '';
+    }
+  }
+
+  updatePrizes();
+}
+
+function collectRowsData() {
+  const rows = [];
+  for(let i=1; i<=playerCountRows; i++){
+    rows.push({
+      name: $(`p${i}name`)?.value || '',
+      start: $(`p${i}start`)?.value || '',
+      score: $(`p${i}score`)?.value || '',
+      deduct: $(`p${i}deduct`)?.value || '',
+      next: $(`p${i}next`)?.value || ''
+    });
+  }
+  return rows;
+}
+
+function sortTable(columnKey) {
+  if (currentSortColumn === columnKey) {
+    currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSortColumn = columnKey;
+    currentSortDirection = 'asc';
+  }
+
+  ['Name', 'Start', 'Score', 'Deduct', 'Next'].forEach(k => {
+    const icon = $(`icon${k}`);
+    if (icon) icon.textContent = '↕';
+  });
+  const activeIcon = $(`icon${columnKey.charAt(0).toUpperCase() + columnKey.slice(1)}`);
+  if (activeIcon) {
+    activeIcon.textContent = currentSortDirection === 'asc' ? '▲' : '▼';
+  }
+
+  const rows = collectRowsData();
+  rows.sort((a, b) => {
+    let valA = a[columnKey];
+    let valB = b[columnKey];
+
+    if (columnKey === 'name') {
+      valA = valA.toLowerCase();
+      valB = valB.toLowerCase();
+      if (valA < valB) return currentSortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return currentSortDirection === 'asc' ? 1 : -1;
+      return 0;
+    } else {
+      let numA = parseFloat(valA);
+      let numB = parseFloat(valB);
+      const isAValid = !isNaN(numA);
+      const isBValid = !isNaN(numB);
+
+      if (!isAValid && !isBValid) return 0;
+      if (!isAValid) return 1;
+      if (!isBValid) return -1;
+
+      return currentSortDirection === 'asc' ? numA - numB : numB - numA;
+    }
+  });
+
+  renderTableRows(rows);
+}
+
+$('sortName').addEventListener('click', () => sortTable('name'));
+$('sortStart').addEventListener('click', () => sortTable('start'));$('sortScore').addEventListener('click', () => sortTable('score'));
+$('sortDeduct').addEventListener('click', () => sortTable('deduct'));$('sortNext').addEventListener('click', () => sortTable('next'));
+
+function namedPlayers(){
+  const list=[];
+  for(let i=1;i<=playerCountRows;i++){
+    const name=$(`p${i}name`)?.value.trim();
+    const scoreVal=$(`p${i}score`)?.value;
+    const score=scoreVal!=='' && !isNaN(scoreVal)?parseInt(scoreVal,10):null;
+    if(name)list.push({name,score,index:i});
+  }
+  return list;
+}
+
+function updatePrizes(){
+  const allNamed=namedPlayers();
+  const count=allNamed.length; 
+  const payouts=payoutMatrix[count]||[0,0,0,0,0];
+  
+  $('playerCount').textContent=count;
+  $('prizePot').textContent=`£${payouts.reduce((a,b)=>a+b,0)}`;
+
+  const winningList=allNamed
+    .filter(p=>p.score!==null && p.score>0)
+    .sort((a,b)=>b.score-a.score);
+
+  const names=['first','second','third'];
+  names.forEach((n,i)=>{
+    $(`${n}Name`).value=winningList[i]?.name||'';
+    $(`${n}Pts`).value=winningList[i]?.score!==undefined?winningList[i].score:'';
+    $(`${n}Prize`).value=winningList[i]&&payouts[i]?`£${payouts[i]}`:'';
+  });
+  $('playerLimit').textContent=`${playerCountRows} of 50 player rows`;
+}
+
+$('addPlayerBtn').addEventListener('click',()=>{
+  if(playerCountRows>=50){alert('Maximum of 50 player rows reached.');return;}
+  playerCountRows++;
+  const rows = collectRowsData();
+  rows.push({name:'', start:'', score:'', deduct:'', next:''});
+  renderTableRows(rows);
+  autoSave();
+});
+
+function getData(){
+  const data={playerCountRows};
+  [...podiumIds].forEach(id=>data[id]=$(id)?.value || '');
+  for(let i=1;i<=playerCountRows;i++){
+    ['name','start','score','deduct','next'].forEach(k=>data[`p${i}${k}`]=$(`p${i}${k}`)?.value || '');
+  }
+  return data;
+}
+
+function setData(data){
+  const target=Math.min(50,Math.max(13,Number(data.playerCountRows)||13));
+  playerCountRows = target;
+  [...podiumIds].forEach(id=>{if(data[id]!==undefined)$(id).value=data[id]});
+  
+  const rows = [];
+  for(let i=1; i<=playerCountRows; i++){
+    rows.push({
+      name: data[`p${i}name`] || '',
+      start: data[`p${i}start`] || '',
+      score: data[`p${i}score`] || '',
+      deduct: data[`p${i}deduct`] || '',
+      next: data[`p${i}next`] || ''
+    });
+  }
+  renderTableRows(rows);
+}
+
+function autoSave(){
+  try{
+    localStorage.setItem('midWeekSwindleResults',JSON.stringify(getData()));
+    $('status').textContent='Changes saved automatically.';
+  }catch(e){}
+}
+
+try{
+  const saved=localStorage.getItem('midWeekSwindleResults');
+  if(saved){
+    setData(JSON.parse(saved));
+  } else {
+    renderTableRows();
+  }
+}catch(e){
+  renderTableRows();
+}
+
+[...podiumIds].forEach(id => {
+  $(id)?.addEventListener('input', () => {
+    updatePrizes();
+    autoSave();
+  });
+});
+
+$('saveBtn').addEventListener('click',()=>{
+  try{
+    localStorage.setItem('midWeekSwindleResults',JSON.stringify(getData()));
+    $('status').textContent='Saved successfully in this browser.';
+  }
+  catch(e){$('status').textContent='Unable to save in this browser. Please export your results instead.';}
+});
+
+$('printBtn').addEventListener('click',()=>window.print());
+
+$('exportBtn').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify(getData(),null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='mid-week-swindle-results.json';a.click();URL.revokeObjectURL(url);
+  $('status').textContent='Results exported as a JSON file.';
+});
+
+$('clearBtn').addEventListener('click',()=>{
+  if(!confirm('Clear all fields? This will also remove the saved results from this browser.'))return;
+  [...podiumIds].forEach(id=>$(id).value='');
+  playerCountRows = 13;
+  renderTableRows();
+  try{localStorage.removeItem('midWeekSwindleResults');}catch(e){}
+  $('status').textContent='Form cleared.';
+});
+
+// Additional: mark deduct fields as manually edited when user types
+document.addEventListener('input', function(e) {
+  if (e.target && e.target.dataset && e.target.dataset.field === 'deduct') {
+    e.target.dataset.manual = 'true';
+  }
+});
+
+// ---- Backup & Restore (header) ----
+const backupBtn = $('backupBtn');
+const restoreBtn = $('restoreBtn');
+const restoreFileInput = $('restoreFileInput');
+
+backupBtn.addEventListener('click', () => {
+  const data = getData();
+  const backup = {
+    _meta: {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      app: 'Mid-Week Swindle'
+    },
+    payload: data
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const pad = n => n.toString().padStart(2, '0');
+  const filename = `mid-week-swindle-backup-${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  $('status').textContent = `Backup created at ${now.toLocaleTimeString()}.`;
+});
+
+restoreBtn.addEventListener('click', () => {
+  restoreFileInput.click();
+});
+
+restoreFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const text = evt.target.result;
+      const parsed = JSON.parse(text);
+      let dataToRestore = null;
+
+      if (parsed && parsed._meta && parsed.payload) {
+        dataToRestore = parsed.payload;
+      } else if (parsed && typeof parsed === 'object') {
+        dataToRestore = parsed;
+      }
+
+      if (!dataToRestore) {
+        throw new Error('Unrecognised backup format.');
+      }
+
+      if (!confirm('Restore this backup? All current data will be replaced.')) {
+        restoreFileInput.value = '';
+        return;
+      }
+
+      setData(dataToRestore);
+      autoSave();
+      $('status').textContent = `Backup restored from "${file.name}".`;
+    } catch (err) {
+      alert('Failed to restore backup: ' + err.message);
+      $('status').textContent = 'Restore failed. Please check the file format.';
+    } finally {
+      restoreFileInput.value = '';
+    }
+  };
+  reader.readAsText(file);
+});
+</script>
+</body>
+</html>
