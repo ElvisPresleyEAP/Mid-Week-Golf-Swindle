@@ -25,7 +25,6 @@ header p{margin:4px 0 0;color:#66563a;font-size:13px}
 .header-actions .restore-btn{background:#e8eee9;color:#24412d}
 .header-actions button:hover{filter:brightness(.96)}
 
-/* Modal styling for Rules */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;place-items:center;padding:15px}
 .modal-overlay.active{display:grid}
 .modal{background:var(--paper);border:1px solid var(--gold);border-radius:14px;max-width:520px;width:100%;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,0.2);animation:fadeIn 0.2s ease}
@@ -55,11 +54,7 @@ input,textarea,select{font:inherit;color:var(--ink);width:100%;border:1px solid 
 input:focus,textarea:focus,select:focus{border-color:#23834a;box-shadow:0 0 0 2px #23834a1a}
 input[type=number]{font-variant-numeric:tabular-nums}
 
-/* Highlight style for Score Today of 31 or below */
-.low-score {
-  color: #dc2626 !important;
-  font-weight: 700 !important;
-}
+.low-score { color: #dc2626 !important; font-weight: 700 !important; }
 
 .player-grid{display:grid;grid-template-columns:1.4fr repeat(4,minmax(100px,1fr));gap:8px}
 .player-row{display:contents}
@@ -80,15 +75,13 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
 .player-row input{min-width:0;padding:5px 7px;font-size:13px}
 .player-row .next{background:#fff8e7;font-weight:bold;color:#6f531d}.count-badge{background:#fff8e7;border:1px solid #dfc77b;border-radius:999px;padding:4px 10px;color:#6f531d;font-size:12px;white-space:nowrap}.player-actions{align-items:center}.player-limit{font-size:12px;color:var(--muted)}
 
-/* Mobile optimisation */
 @media(max-width:800px){
   .podium{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
   .place-1,.place-2,.place-3{margin-bottom:0}
   .player-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .player-grid .wide{grid-column:1/-1}
   .header-right{flex-direction:column;align-items:flex-start}
-  /* player table: stack columns with labels */
-  .player-head{display:none} /* hide header on mobile, we'll show per-row labels */
+  .player-head{display:none}
   .player-row{display:flex;flex-direction:column;gap:6px;padding:12px 6px;border-bottom:2px solid var(--line);margin-bottom:8px;background:#fefcf8;border-radius:10px}
   .player-row > div{display:flex;align-items:center;gap:8px}
   .player-row > div::before{content:attr(data-label);flex:0 0 100px;font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.3px}
@@ -106,7 +99,6 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
   .datebox{margin-top:10px}
   .card{padding:12px}
   .player-grid{grid-template-columns:1fr}
-  /* make labels narrower on very small screens */
   .player-row > div::before{flex:0 0 80px;font-size:10px}
   .player-row input{padding:5px 6px;font-size:13px}
   .section-head{flex-direction:column;align-items:flex-start;gap:6px}
@@ -138,7 +130,6 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
   </div>
 </header>
 
-<!-- Rules Modal -->
 <div class="modal-overlay" id="rulesModal">
   <div class="modal">
     <div class="modal-header">
@@ -232,19 +223,15 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
-const podiumIds=['eventDate','firstName','firstPts','firstPrize','secondName','secondPts','secondPrize','thirdName','thirdPts','thirdPrize','notes'];
+const podiumIds=['firstName','firstPts','firstPrize','secondName','secondPts','secondPrize','thirdName','thirdPts','thirdPrize','notes'];
 const $=id=>document.getElementById(id);
 
-// Rules modal toggle logic
 const rulesBtn = $('rulesBtn');
 const rulesModal = $('rulesModal');
 const closeRulesBtn = $('closeRulesBtn');
-
 rulesBtn.addEventListener('click', () => rulesModal.classList.add('active'));
 closeRulesBtn.addEventListener('click', () => rulesModal.classList.remove('active'));
-rulesModal.addEventListener('click', (e) => {
-  if (e.target === rulesModal) rulesModal.classList.remove('active');
-});
+rulesModal.addEventListener('click', (e) => { if (e.target === rulesModal) rulesModal.classList.remove('active'); });
 
 const payoutMatrix={
 2:[6,4,0,0,0],3:[9,6,0,0,0],4:[12,8,0,0,0],5:[15,10,0,0,0],
@@ -265,24 +252,60 @@ const payoutMatrix={
 let playerCountRows=13;
 let currentSortColumn = null;
 let currentSortDirection = 'asc';
+let currentDateKey = '';
+let suppressAutoSave = false;
 
-function renderTableRows(dataArray = null) {
+/* ============ STORAGE (per date) ============ */
+function getAllDatesData() {
+  try {
+    const raw = localStorage.getItem('midWeekSwindleAllDates');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+function saveAllDatesData(allData) {
+  try { localStorage.setItem('midWeekSwindleAllDates', JSON.stringify(allData)); } catch (e) {}
+}
+function getDateKey() {
+  const d = $('eventDate')?.value;
+  return d || '__no_date__';
+}
+function saveCurrentDateData() {
+  const key = getDateKey();
+  const all = getAllDatesData();
+  all[key] = getData();
+  saveAllDatesData(all);
+  currentDateKey = key;
+}
+
+(function migrateOldStorage() {
+  try {
+    const old = localStorage.getItem('midWeekSwindleResults');
+    if (old) {
+      const parsed = JSON.parse(old);
+      const dateVal = parsed.eventDate || '__no_date__';
+      const all = getAllDatesData();
+      if (!all[dateVal]) { all[dateVal] = parsed; saveAllDatesData(all); }
+      localStorage.removeItem('midWeekSwindleResults');
+    }
+  } catch (e) {}
+})();
+
+function buildEmptyRows(count) {
+  const arr = [];
+  for (let i = 0; i < count; i++) arr.push({ name:'', start:'', score:'', deduct:'', next:'' });
+  return arr;
+}
+
+function renderTableRows(dataArray) {
   const container = $('players');
   container.innerHTML = '';
+  if (!Array.isArray(dataArray)) dataArray = buildEmptyRows(playerCountRows);
 
   for (let i = 1; i <= playerCountRows; i++) {
-    const rowData = dataArray ? dataArray[i - 1] : {
-      name: $(`p${i}name`)?.value || '',
-      start: $(`p${i}start`)?.value || '',
-      score: $(`p${i}score`)?.value || '',
-      deduct: $(`p${i}deduct`)?.value || '',
-      next: $(`p${i}next`)?.value || ''
-    };
-
+    const rowData = dataArray[i - 1] || { name:'', start:'', score:'', deduct:'', next:'' };
     const row = document.createElement('div');
     row.className = 'player-row';
     row.dataset.index = i;
-    // Add data-label attributes for mobile stacked view
     row.innerHTML = `<div data-label="Player"><input id="p${i}name" data-field="name" data-row="${i}" placeholder="Player ${i}" value="${escapeHtml(rowData.name)}"></div>
       <div data-label="Start HCP"><input id="p${i}start" data-field="start" data-row="${i}" type="number" step="0.1" placeholder="0.0" value="${escapeHtml(rowData.start)}"></div>
       <div data-label="Score Today"><input id="p${i}score" data-field="score" data-row="${i}" type="number" min="0" step="1" placeholder="0" value="${escapeHtml(rowData.score)}"></div>
@@ -290,18 +313,11 @@ function renderTableRows(dataArray = null) {
       <div data-label="HCP Next"><input id="p${i}next" class="next" readonly placeholder="Calculated" value="${escapeHtml(rowData.next)}"></div>`;
     container.appendChild(row);
 
-    // Make deduct field editable and attach listeners
     const inputs = [$(`p${i}name`), $(`p${i}start`), $(`p${i}score`), $(`p${i}deduct`)];
     inputs.forEach(el => {
-      el.addEventListener('input', () => {
-        updateAllCalculations();
-        autoSave();
-      });
+      el.addEventListener('input', () => { updateAllCalculations(); autoSave(); });
       el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          navigateNextField(i, el.dataset.field);
-        }
+        if (e.key === 'Enter') { e.preventDefault(); navigateNextField(i, el.dataset.field); }
       });
     });
   }
@@ -311,21 +327,12 @@ function renderTableRows(dataArray = null) {
 function navigateNextField(currentRow, currentField) {
   const fieldsOrder = ['name', 'start', 'score', 'deduct'];
   const fieldIndex = fieldsOrder.indexOf(currentField);
-  
   let targetRow = currentRow;
   let targetFieldIdx = fieldIndex + 1;
-
-  if (targetFieldIdx >= fieldsOrder.length) {
-    targetFieldIdx = 0;
-    targetRow = currentRow + 1;
-  }
-
+  if (targetFieldIdx >= fieldsOrder.length) { targetFieldIdx = 0; targetRow = currentRow + 1; }
   if (targetRow <= playerCountRows) {
     const nextInput = $(`p${targetRow}${fieldsOrder[targetFieldIdx]}`);
-    if (nextInput) {
-      nextInput.focus();
-      nextInput.select();
-    }
+    if (nextInput) { nextInput.focus(); nextInput.select(); }
   }
 }
 
@@ -359,44 +366,34 @@ function updateAllCalculations() {
     const score = p.score;
 
     if (scoreInput) {
-      if (score !== null && score <= 31) {
-        scoreInput.classList.add('low-score');
-      } else {
-        scoreInput.classList.remove('low-score');
-      }
+      if (score !== null && score <= 31) scoreInput.classList.add('low-score');
+      else scoreInput.classList.remove('low-score');
     }
 
-    // Determine auto deduction only if deduct field is empty or we haven't manually set it
+    const hasScoreToday = (p.name && score !== null && score > 0);
+
+    if (!hasScoreToday) {
+      if (nextInput) nextInput.value = Number.isFinite(start) ? start.toFixed(1) : '';
+      if (!deductInput.dataset.manual) deductInput.value = '';
+      continue;
+    }
+
     if (!deductInput.dataset.manual) {
       let autoDeductStr = '0';
-      if (p.name && score !== null && score > 0) {
-        if (score === topScore && topScore > 0) {
-          autoDeductStr = '-1.0';
-        } else if (score === secondScore && secondScore > 0) {
-          autoDeductStr = '-0.5';
-        } else if (score <= 31) {
-          autoDeductStr = '+0.5';
-        }
-      }
+      if (score === topScore && topScore > 0) autoDeductStr = '-1.0';
+      else if (score === secondScore && secondScore > 0) autoDeductStr = '-0.5';
+      else if (score <= 31) autoDeductStr = '+0.5';
       deductInput.value = autoDeductStr;
     }
 
-    // Now compute next using whatever is in deductInput (manual or auto)
     if (Number.isFinite(start)) {
       const rawDeductStr = deductInput.value.trim() || '0';
       const numericAdjustment = parseFloat(rawDeductStr) || 0;
-
       let calculatedNext;
-      if (start < 0) {
-        calculatedNext = start - numericAdjustment;
-      } else {
-        calculatedNext = start + numericAdjustment;
-      }
-
+      if (start < 0) calculatedNext = start - numericAdjustment;
+      else calculatedNext = start + numericAdjustment;
       if (calculatedNext > 18) calculatedNext = 18;
-      if (nextInput) {
-        nextInput.value = calculatedNext.toFixed(1);
-      }
+      if (nextInput) nextInput.value = calculatedNext.toFixed(1);
     } else if (nextInput) {
       nextInput.value = '';
     }
@@ -420,53 +417,40 @@ function collectRowsData() {
 }
 
 function sortTable(columnKey) {
-  if (currentSortColumn === columnKey) {
-    currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
-  } else {
-    currentSortColumn = columnKey;
-    currentSortDirection = 'asc';
-  }
+  if (currentSortColumn === columnKey) currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+  else { currentSortColumn = columnKey; currentSortDirection = 'asc'; }
 
   ['Name', 'Start', 'Score', 'Deduct', 'Next'].forEach(k => {
-    const icon = $(`icon${k}`);
-    if (icon) icon.textContent = '↕';
+    const icon = $(`icon${k}`); if (icon) icon.textContent = '↕';
   });
   const activeIcon = $(`icon${columnKey.charAt(0).toUpperCase() + columnKey.slice(1)}`);
-  if (activeIcon) {
-    activeIcon.textContent = currentSortDirection === 'asc' ? '▲' : '▼';
-  }
+  if (activeIcon) activeIcon.textContent = currentSortDirection === 'asc' ? '▲' : '▼';
 
   const rows = collectRowsData();
   rows.sort((a, b) => {
-    let valA = a[columnKey];
-    let valB = b[columnKey];
-
+    let valA = a[columnKey]; let valB = b[columnKey];
     if (columnKey === 'name') {
-      valA = valA.toLowerCase();
-      valB = valB.toLowerCase();
+      valA = valA.toLowerCase(); valB = valB.toLowerCase();
       if (valA < valB) return currentSortDirection === 'asc' ? -1 : 1;
       if (valA > valB) return currentSortDirection === 'asc' ? 1 : -1;
       return 0;
     } else {
-      let numA = parseFloat(valA);
-      let numB = parseFloat(valB);
-      const isAValid = !isNaN(numA);
-      const isBValid = !isNaN(numB);
-
+      let numA = parseFloat(valA); let numB = parseFloat(valB);
+      const isAValid = !isNaN(numA); const isBValid = !isNaN(numB);
       if (!isAValid && !isBValid) return 0;
       if (!isAValid) return 1;
       if (!isBValid) return -1;
-
       return currentSortDirection === 'asc' ? numA - numB : numB - numA;
     }
   });
-
   renderTableRows(rows);
 }
 
 $('sortName').addEventListener('click', () => sortTable('name'));
-$('sortStart').addEventListener('click', () => sortTable('start'));$('sortScore').addEventListener('click', () => sortTable('score'));
-$('sortDeduct').addEventListener('click', () => sortTable('deduct'));$('sortNext').addEventListener('click', () => sortTable('next'));
+$('sortStart').addEventListener('click', () => sortTable('start'));
+$('sortScore').addEventListener('click', () => sortTable('score'));
+$('sortDeduct').addEventListener('click', () => sortTable('deduct'));
+$('sortNext').addEventListener('click', () => sortTable('next'));
 
 function namedPlayers(){
   const list=[];
@@ -481,20 +465,13 @@ function namedPlayers(){
 
 function updatePrizes(){
   const allNamed=namedPlayers();
-  // Count only players who have a name AND a valid score > 0
   const scoredPlayers = allNamed.filter(p => p.name && p.score !== null && p.score > 0);
   const count = scoredPlayers.length;
-
-  // Use the count of scored players to look up the payout matrix
   const payouts = payoutMatrix[count] || [0,0,0,0,0];
-
   $('playerCount').textContent = count;
   $('prizePot').textContent = `£${payouts.reduce((a,b)=>a+b,0)}`;
 
-  const winningList = scoredPlayers
-    .slice()
-    .sort((a,b) => b.score - a.score);
-
+  const winningList = scoredPlayers.slice().sort((a,b) => b.score - a.score);
   const names = ['first','second','third'];
   names.forEach((n,i) => {
     const winner = winningList[i];
@@ -502,9 +479,79 @@ function updatePrizes(){
     $(`${n}Pts`).value  = winner ? winner.score : '';
     $(`${n}Prize`).value = (winner && payouts[i]) ? `£${payouts[i]}` : '';
   });
-
   $('playerLimit').textContent = `${playerCountRows} of 50 player rows`;
 }
+
+/* =========================================================
+   DATE CHANGE
+   - Each date stores its own data.
+   - When switching to a brand-new (unsaved) date, copy ONLY:
+       Player Name and HCP (previous HCP Next Time You Play becomes the
+       new Starting HCP and HCP Next).
+     Score Today and HCP Deduction are always blank.
+   ========================================================= */
+function handleDateChange() {
+  suppressAutoSave = true;
+
+  const newKey = getDateKey();
+  const oldKey = currentDateKey;
+
+  // 1) Save the OLD date under its own key
+  if (oldKey && oldKey !== newKey) {
+    const all = getAllDatesData();
+    all[oldKey] = getData();
+    saveAllDatesData(all);
+  }
+
+  // 2) Build the new date from the date we just left.
+  //    Carry across: Player Name; previous HCP Next Time You Play becomes Starting HCP.
+  //    Always blank: Score Today and HCP Deduction.
+  const all = getAllDatesData();
+  const prev = oldKey ? all[oldKey] : null;
+  const baseCount = prev
+    ? Math.min(50, Math.max(13, Number(prev.playerCountRows) || 13))
+    : 13;
+  playerCountRows = baseCount;
+
+  const newRows = [];
+  for (let i = 1; i <= baseCount; i++) {
+    newRows.push({
+      name:   prev ? (prev[`p${i}name`]  || '') : '',
+      start:  prev ? (prev[`p${i}next`] || prev[`p${i}start`] || '') : '',  // previous HCP Next becomes Starting HCP
+      score:  '',
+      deduct: '',
+      next:   prev ? (prev[`p${i}next`] || prev[`p${i}start`] || '') : ''
+    });
+  }
+  renderTableRows(newRows);
+
+  // Re-apply carried HCP Next (the calculation resets it when there is no score)
+  // and hard-clear score / deduction.
+  for (let i = 1; i <= playerCountRows; i++) {
+    const s = $(`p${i}score`);  if (s) { s.value = ''; s.classList.remove('low-score'); }
+    const d = $(`p${i}deduct`); if (d) { d.value = ''; delete d.dataset.manual; }
+    const n = $(`p${i}next`);   if (n) n.value = newRows[i - 1].next;
+  }
+
+  // Clear podium and notes
+  ['firstName','firstPts','firstPrize','secondName','secondPts','secondPrize',
+   'thirdName','thirdPts','thirdPrize','notes'].forEach(id => {
+    const el = $(id); if (el) el.value = '';
+  });
+  updatePrizes();
+
+  currentDateKey = newKey;
+
+  // 3) Save the new date's state
+  const allAfter = getAllDatesData();
+  allAfter[newKey] = getData();
+  saveAllDatesData(allAfter);
+
+  suppressAutoSave = false;
+  $('status').textContent = `Switched to ${newKey}.`;
+}
+
+$('eventDate').addEventListener('change', handleDateChange);
 
 $('addPlayerBtn').addEventListener('click',()=>{
   if(playerCountRows>=50){alert('Maximum of 50 player rows reached.');return;}
@@ -517,6 +564,7 @@ $('addPlayerBtn').addEventListener('click',()=>{
 
 function getData(){
   const data={playerCountRows};
+  data.eventDate = $('eventDate')?.value || '';
   [...podiumIds].forEach(id=>data[id]=$(id)?.value || '');
   for(let i=1;i<=playerCountRows;i++){
     ['name','start','score','deduct','next'].forEach(k=>data[`p${i}${k}`]=$(`p${i}${k}`)?.value || '');
@@ -527,8 +575,8 @@ function getData(){
 function setData(data){
   const target=Math.min(50,Math.max(13,Number(data.playerCountRows)||13));
   playerCountRows = target;
+  if (data.eventDate && !$('eventDate').value) $('eventDate').value = data.eventDate;
   [...podiumIds].forEach(id=>{if(data[id]!==undefined)$(id).value=data[id]});
-  
   const rows = [];
   for(let i=1; i<=playerCountRows; i++){
     rows.push({
@@ -543,57 +591,49 @@ function setData(data){
 }
 
 function autoSave(){
+  if (suppressAutoSave) return;
   try{
-    localStorage.setItem('midWeekSwindleResults',JSON.stringify(getData()));
+    saveCurrentDateData();
     $('status').textContent='Changes saved automatically.';
   }catch(e){}
 }
 
-// Initialize with saved data or fresh table
-try{
-  const saved=localStorage.getItem('midWeekSwindleResults');
-  if(saved){
-    setData(JSON.parse(saved));
+(function init() {
+  const today = new Date().toISOString().slice(0,10);
+  const dateInput = $('eventDate');
+  if (dateInput && !dateInput.value) dateInput.value = today;
+  currentDateKey = getDateKey();
+
+  const all = getAllDatesData();
+  if (all[currentDateKey]) {
+    setData(all[currentDateKey]);
   } else {
-    renderTableRows();
+    renderTableRows(buildEmptyRows(playerCountRows));
   }
-}catch(e){
-  renderTableRows();
-}
+})();
 
 [...podiumIds].forEach(id => {
-  $(id)?.addEventListener('input', () => {
-    updatePrizes();
-    autoSave();
-  });
+  $(id)?.addEventListener('input', () => { updatePrizes(); autoSave(); });
 });
 
 $('saveBtn').addEventListener('click',()=>{
   try{
-    localStorage.setItem('midWeekSwindleResults',JSON.stringify(getData()));
+    saveCurrentDateData();
     $('status').textContent='Saved successfully in this browser.';
-  }
-  catch(e){$('status').textContent='Unable to save in this browser. Please export your results instead.';}
+  } catch(e){ $('status').textContent='Unable to save in this browser.'; }
 });
 
 $('printBtn').addEventListener('click',()=>window.print());
 
-// ---- Save as Image ----
 $('imageBtn').addEventListener('click', function() {
   const captureElement = document.getElementById('captureArea');
   const btn = this;
   const originalText = btn.textContent;
   btn.textContent = 'Generating...';
   btn.disabled = true;
-
   html2canvas(captureElement, {
-    scale: 2,
-    backgroundColor: '#f7f1e3',
-    allowTaint: false,
-    useCORS: true,
-    logging: false,
-    windowWidth: captureElement.scrollWidth,
-    windowHeight: captureElement.scrollHeight
+    scale: 2, backgroundColor: '#f7f1e3', allowTaint: false, useCORS: true, logging: false,
+    windowWidth: captureElement.scrollWidth, windowHeight: captureElement.scrollHeight
   }).then(canvas => {
     const link = document.createElement('a');
     const dateStr = new Date().toISOString().slice(0,10);
@@ -602,13 +642,9 @@ $('imageBtn').addEventListener('click', function() {
     link.click();
     $('status').textContent = 'Image saved as PNG.';
   }).catch(err => {
-    console.error('Image capture failed:', err);
-    $('status').textContent = 'Image capture failed. Try printing to PDF instead.';
-    alert('Could not generate image. Please try again or use Print / Save as PDF.');
-  }).finally(() => {
-    btn.textContent = originalText;
-    btn.disabled = false;
-  });
+    console.error(err);
+    $('status').textContent = 'Image capture failed.';
+  }).finally(() => { btn.textContent = originalText; btn.disabled = false; });
 });
 
 $('exportBtn').addEventListener('click',()=>{
@@ -619,92 +655,70 @@ $('exportBtn').addEventListener('click',()=>{
 });
 
 $('clearBtn').addEventListener('click',()=>{
-  if(!confirm('Clear all fields? This will also remove the saved results from this browser.'))return;
+  if(!confirm('Clear all fields for this date? This will remove the saved results for this date from this browser.'))return;
   [...podiumIds].forEach(id=>$(id).value='');
   playerCountRows = 13;
-  renderTableRows();
-  try{localStorage.removeItem('midWeekSwindleResults');}catch(e){}
-  $('status').textContent='Form cleared.';
+  renderTableRows(buildEmptyRows(13));
+  const all = getAllDatesData();
+  delete all[getDateKey()];
+  saveAllDatesData(all);
+  $('status').textContent='Form cleared for this date.';
 });
 
-// Additional: mark deduct fields as manually edited when user types
 document.addEventListener('input', function(e) {
   if (e.target && e.target.dataset && e.target.dataset.field === 'deduct') {
     e.target.dataset.manual = 'true';
   }
 });
 
-// ---- Backup & Restore (header) ----
-// Run immediately since script is at end of body (DOM is ready)
 (function initBackupRestore() {
   const backupBtn = $('backupBtn');
   const restoreBtn = $('restoreBtn');
   const restoreFileInput = $('restoreFileInput');
 
-  if (backupBtn) {
-    backupBtn.addEventListener('click', () => {
-      const data = getData();
-      const backup = {
-        _meta: {
-          version: 1,
-          exportedAt: new Date().toISOString(),
-          app: 'Mid-Week Swindle'
-        },
-        payload: data
-      };
-      const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const now = new Date();
-      const pad = n => n.toString().padStart(2, '0');
-      const filename = `mid-week-swindle-backup-${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      $('status').textContent = `Backup created at ${now.toLocaleTimeString()}.`;
-    });
-  }
+  if (backupBtn) backupBtn.addEventListener('click', () => {
+    saveCurrentDateData();
+    const allDates = getAllDatesData();
+    const backup = { _meta: { version: 2, exportedAt: new Date().toISOString(), app: 'Mid-Week Swindle', dateCount: Object.keys(allDates).length }, dates: allDates };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const now = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    const filename = `mid-week-swindle-backup-${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+    a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+    $('status').textContent = `Backup created with ${Object.keys(allDates).length} date(s).`;
+  });
 
   if (restoreBtn && restoreFileInput) {
-    restoreBtn.addEventListener('click', () => {
-      restoreFileInput.click();
-    });
-
+    restoreBtn.addEventListener('click', () => restoreFileInput.click());
     restoreFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (evt) => {
         try {
-          const text = evt.target.result;
-          const parsed = JSON.parse(text);
-          let dataToRestore = null;
-
-          if (parsed && parsed._meta && parsed.payload) {
-            dataToRestore = parsed.payload;
-          } else if (parsed && typeof parsed === 'object') {
-            dataToRestore = parsed;
+          const parsed = JSON.parse(evt.target.result);
+          let datesToRestore = null;
+          if (parsed && parsed._meta && parsed.dates) datesToRestore = parsed.dates;
+          else if (parsed && parsed._meta && parsed.payload) { const k = parsed.payload.eventDate || '__no_date__'; datesToRestore = { [k]: parsed.payload }; }
+          else if (parsed && typeof parsed === 'object') { const k = parsed.eventDate || '__no_date__'; datesToRestore = { [k]: parsed }; }
+          if (!datesToRestore) throw new Error('Unrecognised backup format.');
+          const dateCount = Object.keys(datesToRestore).length;
+          if (!confirm(`Restore backup with ${dateCount} date(s)? All current data will be replaced.`)) { restoreFileInput.value=''; return; }
+          saveAllDatesData(datesToRestore);
+          const currentKey = getDateKey();
+          if (datesToRestore[currentKey]) setData(datesToRestore[currentKey]);
+          else {
+            const firstKey = Object.keys(datesToRestore)[0];
+            if (firstKey && firstKey !== '__no_date__') $('eventDate').value = firstKey;
+            setData(datesToRestore[firstKey]);
           }
-
-          if (!dataToRestore) {
-            throw new Error('Unrecognised backup format.');
-          }
-
-          if (!confirm('Restore this backup? All current data will be replaced.')) {
-            restoreFileInput.value = '';
-            return;
-          }
-
-          setData(dataToRestore);
-          autoSave();
-          $('status').textContent = `Backup restored from "${file.name}".`;
+          currentDateKey = getDateKey();
+          $('status').textContent = `Backup restored with ${dateCount} date(s).`;
         } catch (err) {
-          alert('Failed to restore backup: ' + err.message);
-          $('status').textContent = 'Restore failed. Please check the file format.';
-        } finally {
-          restoreFileInput.value = '';
-        }
+          alert('Failed to restore: ' + err.message);
+        } finally { restoreFileInput.value = ''; }
       };
       reader.readAsText(file);
     });
