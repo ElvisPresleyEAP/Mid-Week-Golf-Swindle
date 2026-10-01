@@ -115,7 +115,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" id="captureArea">
 <header>
   <div class="header-left">
     <button class="info-icon-btn" id="rulesBtn" title="View Rules">i</button>
@@ -221,6 +221,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
     <div class="actions">
       <button class="primary" id="saveBtn">Save in this browser</button>
       <button class="secondary" id="printBtn">Print / Save as PDF</button>
+      <button class="secondary" id="imageBtn">Save as Image</button>
       <button class="secondary" id="exportBtn">Export results (.json)</button>
       <button class="danger" id="clearBtn">Clear form</button>
     </div>
@@ -229,6 +230,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
 </main>
 <footer>Mid-Week Swindle · Results sheet</footer>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const podiumIds=['eventDate','firstName','firstPts','firstPrize','secondName','secondPts','secondPrize','thirdName','thirdPts','thirdPrize','notes'];
 const $=id=>document.getElementById(id);
@@ -569,6 +571,39 @@ $('saveBtn').addEventListener('click',()=>{
 });
 
 $('printBtn').addEventListener('click',()=>window.print());
+
+// ---- Save as Image ----
+$('imageBtn').addEventListener('click', function() {
+  const captureElement = document.getElementById('captureArea');
+  const btn = this;
+  const originalText = btn.textContent;
+  btn.textContent = 'Generating...';
+  btn.disabled = true;
+
+  html2canvas(captureElement, {
+    scale: 2,
+    backgroundColor: '#f7f1e3',
+    allowTaint: false,
+    useCORS: true,
+    logging: false,
+    windowWidth: captureElement.scrollWidth,
+    windowHeight: captureElement.scrollHeight
+  }).then(canvas => {
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0,10);
+    link.download = `mid-week-swindle-${dateStr}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    $('status').textContent = 'Image saved as PNG.';
+  }).catch(err => {
+    console.error('Image capture failed:', err);
+    $('status').textContent = 'Image capture failed. Try printing to PDF instead.';
+    alert('Could not generate image. Please try again or use Print / Save as PDF.');
+  }).finally(() => {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  });
+});
 
 $('exportBtn').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify(getData(),null,2)],{type:'application/json'});
