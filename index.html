@@ -54,6 +54,9 @@ input:focus,textarea:focus,select:focus{border-color:#23834a;box-shadow:0 0 0 2p
 input[type=number]{font-variant-numeric:tabular-nums}
 
 .low-score { color: #dc2626 !important; font-weight: 700 !important; }
+.podium input.manual{background:#fff8e7;border-color:#d4af37}
+.badge-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.reset-podium{padding:5px 10px !important;font-size:12px !important}
 
 .player-grid{display:grid;grid-template-columns:1.4fr repeat(4,minmax(100px,1fr));gap:8px}
 .player-row{display:contents}
@@ -126,36 +129,39 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
 <main>
   <section class="card">
     <div class="section-head">
-      <div><h2>Podium Finish</h2><p class="sub">Prizes are automatically calculated from the number of players with a score entered.</p></div>
-      <div class="count-badge">Players: <strong id="playerCount">0</strong> · Prize Pot: <strong id="prizePot">£0</strong></div>
+      <div><h2>Podium Finish</h2><p class="sub">Filled in automatically from the scores entered, but every field can be edited. Edited fields are highlighted and kept until you reset them.</p></div>
+      <div class="badge-wrap">
+        <button class="secondary reset-podium" id="resetPodiumBtn" title="Clear all manual edits and go back to automatic podium results">Reset podium to auto</button>
+        <div class="count-badge">Players: <strong id="playerCount">0</strong> · Prize Pot: <strong id="prizePot">£0</strong></div>
+      </div>
     </div>
     <div class="podium">
       <div class="place place-1">
         <div class="place-head"><span class="medal">1</span> 1st Place</div>
         <div class="fields">
-          <div><label for="firstName">Player name</label><input id="firstName" readonly placeholder="Automatically assigned"></div>
+          <div><label for="firstName">Player name</label><input id="firstName" type="text" placeholder="Automatically assigned"></div>
           <div><label for="firstPts">Points</label><input id="firstPts" type="number" min="0" step="1" placeholder="0"></div>
-          <div><label for="firstPrize">Prize</label><input id="firstPrize" readonly placeholder="£0"></div>
+          <div><label for="firstPrize">Prize</label><input id="firstPrize" type="text" placeholder="£0"></div>
         </div>
       </div>
       <div class="place place-2">
         <div class="place-head"><span class="medal">2</span> 2nd Place</div>
         <div class="fields">
-          <div><label for="secondName">Player name</label><input id="secondName" readonly placeholder="Automatically assigned"></div>
+          <div><label for="secondName">Player name</label><input id="secondName" type="text" placeholder="Automatically assigned"></div>
           <div><label for="secondPts">Points</label><input id="secondPts" type="number" min="0" step="1" placeholder="0"></div>
-          <div><label for="secondPrize">Prize</label><input id="secondPrize" readonly placeholder="£0"></div>
+          <div><label for="secondPrize">Prize</label><input id="secondPrize" type="text" placeholder="£0"></div>
         </div>
       </div>
       <div class="place place-3">
         <div class="place-head"><span class="medal">3</span> 3rd Place</div>
         <div class="fields">
-          <div><label for="thirdName">Player name</label><input id="thirdName" readonly placeholder="Automatically assigned"></div>
+          <div><label for="thirdName">Player name</label><input id="thirdName" type="text" placeholder="Automatically assigned"></div>
           <div><label for="thirdPts">Points</label><input id="thirdPts" type="number" min="0" step="1" placeholder="0"></div>
-          <div><label for="thirdPrize">Prize</label><input id="thirdPrize" readonly placeholder="£0"></div>
+          <div><label for="thirdPrize">Prize</label><input id="thirdPrize" type="text" placeholder="£0"></div>
         </div>
       </div>
     </div>
-    <p class="hint">Score Today of 31 or below is shown in bold red. Highest score gets a 1.0-shot HCP deduction, 2nd highest gets a 0.5-shot deduction. Other scores of 31 or below gain 0.5 shot. The resulting HCP is shown in “HCP Next Time You Play”.</p>
+    <p class="hint">Podium fields are editable: type over any name, points or prize to override it (highlighted in gold). Clear a field and click away to return it to automatic, or use “Reset podium to auto”. Score Today of 31 or below is shown in bold red. Highest score gets a 1.0-shot HCP deduction, 2nd highest gets a 0.5-shot deduction. Other scores of 31 or below gain 0.5 shot. The resulting HCP is shown in “HCP Next Time You Play”.</p>
   </section>
 
   <section class="card">
@@ -196,6 +202,16 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:12px}
 <script>
 const podiumIds=['firstName','firstPts','firstPrize','secondName','secondPts','secondPrize','thirdName','thirdPts','thirdPrize','notes'];
 const $=id=>document.getElementById(id);
+const podiumFieldIds=podiumIds.filter(id=>id!=='notes');
+
+/* Manual-override tracking for podium fields */
+function setPodiumManual(id,on){
+  const el=$(id); if(!el) return;
+  if(on){el.dataset.manual='true';el.classList.add('manual');}
+  else{delete el.dataset.manual;el.classList.remove('manual');}
+}
+function clearPodiumManual(){podiumFieldIds.forEach(id=>setPodiumManual(id,false));}
+function getPodiumManual(){return podiumFieldIds.filter(id=>$(id)?.dataset.manual==='true');}
 
 const rulesBtn = $('rulesBtn');
 const rulesModal = $('rulesModal');
@@ -446,9 +462,10 @@ function updatePrizes(){
   const names = ['first','second','third'];
   names.forEach((n,i) => {
     const winner = winningList[i];
-    $(`${n}Name`).value = winner ? winner.name : '';
-    $(`${n}Pts`).value  = winner ? winner.score : '';
-    $(`${n}Prize`).value = (winner && payouts[i]) ? `£${payouts[i]}` : '';
+    const nameEl=$(`${n}Name`), ptsEl=$(`${n}Pts`), prizeEl=$(`${n}Prize`);
+    if(!nameEl.dataset.manual)  nameEl.value  = winner ? winner.name : '';
+    if(!ptsEl.dataset.manual)   ptsEl.value   = winner ? winner.score : '';
+    if(!prizeEl.dataset.manual) prizeEl.value = (winner && payouts[i]) ? `£${payouts[i]}` : '';
   });
   $('playerLimit').textContent = `${playerCountRows} of 50 player rows`;
 }
@@ -509,6 +526,7 @@ function handleDateChange() {
    'thirdName','thirdPts','thirdPrize','notes'].forEach(id => {
     const el = $(id); if (el) el.value = '';
   });
+  clearPodiumManual();
   updatePrizes();
 
   currentDateKey = newKey;
@@ -537,6 +555,7 @@ function getData(){
   const data={playerCountRows};
   data.eventDate = $('eventDate')?.value || '';
   [...podiumIds].forEach(id=>data[id]=$(id)?.value || '');
+  data.podiumManual = getPodiumManual();
   for(let i=1;i<=playerCountRows;i++){
     ['name','start','score','deduct','next'].forEach(k=>data[`p${i}${k}`]=$(`p${i}${k}`)?.value || '');
   }
@@ -548,6 +567,8 @@ function setData(data){
   playerCountRows = target;
   if (data.eventDate && !$('eventDate').value) $('eventDate').value = data.eventDate;
   [...podiumIds].forEach(id=>{if(data[id]!==undefined)$(id).value=data[id]});
+  clearPodiumManual();
+  (Array.isArray(data.podiumManual)?data.podiumManual:[]).forEach(id=>{if(podiumFieldIds.includes(id))setPodiumManual(id,true)});
   const rows = [];
   for(let i=1; i<=playerCountRows; i++){
     rows.push({
@@ -584,7 +605,25 @@ function autoSave(){
 })();
 
 [...podiumIds].forEach(id => {
-  $(id)?.addEventListener('input', () => { updatePrizes(); autoSave(); });
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener('input', () => {
+    if (id !== 'notes') setPodiumManual(id, true);
+    updatePrizes(); autoSave();
+  });
+  if (id !== 'notes') {
+    // Clearing a field and leaving it hands control back to the automatic result
+    el.addEventListener('change', () => {
+      if (el.value.trim() === '') { setPodiumManual(id, false); updatePrizes(); autoSave(); }
+    });
+  }
+});
+
+$('resetPodiumBtn').addEventListener('click', () => {
+  clearPodiumManual();
+  updatePrizes();
+  autoSave();
+  $('status').textContent = 'Podium reset to automatic results.';
 });
 
 $('saveBtn').addEventListener('click',()=>{
@@ -628,6 +667,7 @@ $('exportBtn').addEventListener('click',()=>{
 $('clearBtn').addEventListener('click',()=>{
   if(!confirm('Clear all fields for this date? This will remove the saved results for this date from this browser.'))return;
   [...podiumIds].forEach(id=>$(id).value='');
+  clearPodiumManual();
   playerCountRows = 13;
   renderTableRows(buildEmptyRows(13));
   const all = getAllDatesData();
